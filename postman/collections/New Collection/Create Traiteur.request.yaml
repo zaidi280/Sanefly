@@ -1,0 +1,14 @@
+$kind: http-request
+method: POST
+url: 'http://localhost:8081/api/admin/traiteurs'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userId": "7477fba6-c575-4033-a801-8c7aca898eec",
+      "businessName": "Traiteur Saifeddine",
+      "description": "Authentic Algerian catering service"
+    }
