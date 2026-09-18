@@ -9,14 +9,17 @@ import com.backend.sanfely.catalog.repository.DishRepository;
 import com.backend.sanfely.catalog.specification.DishSpecifications;
 import com.backend.sanfely.common.exception.ResourceNotFoundException;
 import com.backend.sanfely.common.exception.UnauthorizedActionException;
+import com.backend.sanfely.common.security.CurrentUserProvider;
 import com.backend.sanfely.traiteur.domain.Traiteur;
 import com.backend.sanfely.traiteur.repository.TraiteurRepository;
+import com.backend.sanfely.user.domain.User;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -29,12 +32,13 @@ public class DishService {
     private final DishRepository dishRepository;
     private final TraiteurRepository traiteurRepository;
     private final DishMapper dishMapper;
+    private final CurrentUserProvider currentUserProvider;
+    private final org.springframework.cache.CacheManager cacheManager;
 
     @Transactional
-    @CacheEvict(value = "dishesByTraiteur", key = "#dto.traiteurId()")
+    @CacheEvict(value = "dishesByTraiteur", key = "#result.traiteurId()")
     public DishResponseDto createDish(DishCreateRequestDto dto) {
-        Traiteur traiteur = traiteurRepository.findById(dto.traiteurId())
-            .orElseThrow(() -> new ResourceNotFoundException("Traiteur not found with id: " + dto.traiteurId()));
+        Traiteur traiteur = getOwnTraiteurOrThrow();
 
         Dish dish = new Dish();
         dish.setTraiteur(traiteur);
@@ -47,9 +51,30 @@ public class DishService {
         dish.setAvailable(true);
 
         Dish saved = dishRepository.save(dish);
+        evictDishCache(traiteur.getId());
         return dishMapper.toResponseDto(saved);
     }
-    @Cacheable(value = "dishesByTraiteur", key = "#traiteurId", condition = "#traiteurId != null && #category == null && #maxPrice == null")
+
+    @Transactional
+    public void deleteDish(UUID dishId) {
+        Dish dish = dishRepository.findById(dishId)
+            .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + dishId));
+
+        Traiteur ownTraiteur = getOwnTraiteurOrThrow();
+
+        if (!dish.getTraiteur().getId().equals(ownTraiteur.getId())) {
+            throw new UnauthorizedActionException("You can only delete your own dishes");
+        }
+
+        dish.setAvailable(false);
+        dishRepository.save(dish);
+
+        var cache = cacheManager.getCache("dishesByTraiteur");
+        if (cache != null) {
+            cache.evict(ownTraiteur.getId());
+        }
+    }
+
     public List<DishResponseDto> searchDishes(UUID traiteurId, DishCategory category, BigDecimal maxPrice) {
         Specification<Dish> spec = Specification
             .where(DishSpecifications.isAvailable())
@@ -68,18 +93,15 @@ public class DishService {
             .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + id));
         return dishMapper.toResponseDto(dish);
     }
- // DishService.java
-    @Transactional
-    @CacheEvict(value = "dishesByTraiteur", key = "#dishTraiteurId")
-    public void deleteDish(UUID dishId, UUID dishTraiteurId) {
-        Dish dish = dishRepository.findById(dishId)
-            .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + dishId));
 
-        if (!dish.getTraiteur().getId().equals(dishTraiteurId)) {
-            throw new UnauthorizedActionException("You can only delete your own dishes");
-        }
+    private Traiteur getOwnTraiteurOrThrow() {
+        User currentUser = currentUserProvider.getCurrentUser();
+        return traiteurRepository.findByUserId(currentUser.getId())
+            .orElseThrow(() -> new UnauthorizedActionException("You do not have a traiteur profile"));
+    }
 
-        dish.setAvailable(false);
-        dishRepository.save(dish);
+    
+    public void evictDishCache(UUID traiteurId) {
+        // body intentionally empty - annotation does the work
     }
 }

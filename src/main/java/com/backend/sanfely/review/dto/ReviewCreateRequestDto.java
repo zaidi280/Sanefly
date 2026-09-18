@@ -8,7 +8,6 @@ import java.util.UUID;
 
 public record ReviewCreateRequestDto(
     @NotNull UUID orderId,
-    @NotNull UUID clientId,
     @NotNull @Min(1) @Max(5) Integer rating,
     String comment
 ) {}

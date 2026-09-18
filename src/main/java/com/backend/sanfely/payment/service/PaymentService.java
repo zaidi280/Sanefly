@@ -1,6 +1,9 @@
 package com.backend.sanfely.payment.service;
 
 import com.backend.sanfely.common.exception.ResourceNotFoundException;
+import com.backend.sanfely.common.exception.UnauthorizedActionException;
+import com.backend.sanfely.common.security.CurrentUserProvider;
+import com.backend.sanfely.common.security.OrderAccessChecker;
 import com.backend.sanfely.order.domain.Order;
 import com.backend.sanfely.payment.domain.Payment;
 import com.backend.sanfely.payment.domain.PaymentMethod;
@@ -9,6 +12,7 @@ import com.backend.sanfely.payment.mapper.PaymentMapper;
 import com.backend.sanfely.payment.repository.PaymentRepository;
 import com.backend.sanfely.payment.strategy.PaymentStrategy;
 import com.backend.sanfely.payment.strategy.PaymentStrategyResolver;
+import com.backend.sanfely.user.domain.User;
 
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +31,8 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentStrategyResolver strategyResolver;
     private final PaymentMapper paymentMapper;
+    private final CurrentUserProvider currentUserProvider;
+    private final OrderAccessChecker orderAccessChecker;
 
     @Transactional
     public void initiatePayment(Order order, PaymentMethod method) {
@@ -43,7 +49,13 @@ public class PaymentService {
     }
     public PaymentResponseDto getPaymentByOrderId(UUID orderId) {
         Payment payment = paymentRepository.findByOrderId(orderId)
-            .orElseThrow(() -> new ResourceNotFoundException("payment not found with id: " + orderId));
+            .orElseThrow(() -> new ResourceNotFoundException("Payment not found for order: " + orderId));
+
+        User currentUser = currentUserProvider.getCurrentUser();
+        if (!orderAccessChecker.canView(payment.getOrder(), currentUser)) {
+            throw new UnauthorizedActionException("You cannot view this payment");
+        }
+
         return paymentMapper.toResponseDto(payment);
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -69,5 +70,13 @@ public class GlobalExceptionHandler {
             HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error", "Something went wrong"
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthorizationDenied(
+            org.springframework.security.authorization.AuthorizationDeniedException ex) {
+        ApiErrorResponse body = new ApiErrorResponse(
+            HttpStatus.FORBIDDEN.value(), "Forbidden", "You do not have permission to perform this action"
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 }

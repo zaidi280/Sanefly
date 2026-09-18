@@ -1,9 +1,10 @@
 package com.backend.sanfely.user.service;
 
 import com.backend.sanfely.common.exception.ResourceNotFoundException;
+import com.backend.sanfely.common.security.CurrentUserProvider;
 import com.backend.sanfely.user.domain.User;
+
 import com.backend.sanfely.user.dto.AdminUserResponseDto;
-import com.backend.sanfely.user.dto.UserCreateRequestDto;
 import com.backend.sanfely.user.dto.UserResponseDto;
 import com.backend.sanfely.user.mapper.UserMapper;
 import com.backend.sanfely.user.repository.UserRepository;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.UUID;
+
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +23,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final CurrentUserProvider currentUserProvider;
 
-    @Transactional
-    public UserResponseDto createUser(UserCreateRequestDto dto) {
-        User user = userMapper.toEntity(dto);
-        User saved = userRepository.save(user);
-        return userMapper.toResponseDto(saved);
-    }
+   
 
     public UserResponseDto getUserById(UUID id) {
         User user = userRepository.findById(id)
@@ -47,5 +45,9 @@ public class UserService {
             .stream()
             .map(userMapper::toAdminResponseDto)
             .toList();
+    }
+    public UserResponseDto syncCurrentUser() {
+        User user = currentUserProvider.getCurrentUser();
+        return userMapper.toResponseDto(user);
     }
 }

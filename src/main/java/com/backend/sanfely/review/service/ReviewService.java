@@ -3,6 +3,7 @@ package com.backend.sanfely.review.service;
 import com.backend.sanfely.common.exception.ResourceNotFoundException;
 import com.backend.sanfely.common.exception.ReviewNotAllowedException;
 import com.backend.sanfely.common.exception.UnauthorizedActionException;
+import com.backend.sanfely.common.security.CurrentUserProvider;
 import com.backend.sanfely.order.domain.Order;
 import com.backend.sanfely.order.domain.OrderStatus;
 import com.backend.sanfely.order.repository.OrderRepository;
@@ -28,14 +29,14 @@ public class ReviewService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final ReviewMapper reviewMapper;
+    private final CurrentUserProvider currentUserProvider; //CurrentUserProvider replaces the need for a raw repository lookup by an untrusted ID
 
     @Transactional
     public ReviewResponseDto createReview(ReviewCreateRequestDto dto) {
         Order order = orderRepository.findById(dto.orderId())
             .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + dto.orderId()));
 
-        User client = userRepository.findById(dto.clientId())
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + dto.clientId()));
+        User client = currentUserProvider.getCurrentUser();
 
         if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new ReviewNotAllowedException("Cannot review an order that hasn't been delivered yet");
@@ -62,9 +63,9 @@ public class ReviewService {
     public ReviewResponseDto updateReview(UUID orderId, ReviewCreateRequestDto dto) {
         Review review = reviewRepository.findByOrderId(orderId)
             .orElseThrow(() -> new ResourceNotFoundException("No review found for order: " + orderId));
-
+        User client = currentUserProvider.getCurrentUser();
         // still verify ownership, same check as before
-        if (!review.getClient().getId().equals(dto.clientId())) {
+        if (!review.getClient().getId().equals(client)) {
             throw new UnauthorizedActionException("You can only edit your own review");
         }
 

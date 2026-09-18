@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ public class DishController {
     private final DishService dishService;
 
     @PostMapping
+    @PreAuthorize("hasRole('TRAITEUR')")
     public ResponseEntity<DishResponseDto> createDish(@Valid @RequestBody DishCreateRequestDto dto) {
         DishResponseDto created = dishService.createDish(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -40,10 +42,10 @@ public class DishController {
     public DishResponseDto getDish(@PathVariable UUID id) {
         return dishService.getDishById(id);
     }
- // DishController.java
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDish(@PathVariable UUID id, @RequestParam UUID traiteurId) {
-        dishService.deleteDish(id, traiteurId);
+    @PreAuthorize("hasRole('TRAITEUR')")
+    public ResponseEntity<Void> deleteDish(@PathVariable UUID id) {
+        dishService.deleteDish(id);
         return ResponseEntity.noContent().build();
     }
 }

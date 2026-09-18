@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.UUID;
 
 public record OrderCreateRequestDto(
-    @NotNull UUID clientId,
     @NotNull UUID traiteurId,
     @NotBlank String deliveryAddress,
     LocalDateTime requestedDeliveryTime,

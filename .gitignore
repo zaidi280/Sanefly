@@ -73,6 +73,3 @@ application-local.properties
 application-local.yml
 application-local.yaml
 
-### Postman (Local workspace cache if not shared) ###
-# Uncomment below if you don't want to track local postman cache:
-# .postman/

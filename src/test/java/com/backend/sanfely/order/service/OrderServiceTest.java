@@ -50,7 +50,7 @@ class OrderServiceTest {
         pricingService = new OrderPricingService(); // real, no dependencies needed
         orderService = new OrderService(
             orderRepository, userRepository, traiteurRepository,
-            dishRepository, orderMapper, pricingService, eventPublisher
+            dishRepository, orderMapper, pricingService, eventPublisher, null, null
         );
     }
 
@@ -58,7 +58,7 @@ class OrderServiceTest {
     void createOrder_throwsWhenClientNotFound() {
         UUID fakeClientId = UUID.randomUUID();
         OrderCreateRequestDto dto = new OrderCreateRequestDto(
-            fakeClientId, UUID.randomUUID(), "Some address", null, List.of()
+             UUID.randomUUID(), "Some address", null, List.of()
         );
 
         when(userRepository.findById(fakeClientId)).thenReturn(Optional.empty());
@@ -79,7 +79,7 @@ class OrderServiceTest {
 
         OrderItemRequestDto itemDto = new OrderItemRequestDto(missingDishId, 2);
         OrderCreateRequestDto dto = new OrderCreateRequestDto(
-            clientId, traiteurId, "Some address", null, List.of(itemDto)
+            clientId, "Some address", null, List.of(itemDto)
         );
 
         when(userRepository.findById(clientId)).thenReturn(Optional.of(client));
@@ -105,7 +105,7 @@ class OrderServiceTest {
 
         OrderItemRequestDto itemDto = new OrderItemRequestDto(dishId, 3);
         OrderCreateRequestDto dto = new OrderCreateRequestDto(
-            clientId, traiteurId, "Some address", null, List.of(itemDto)
+            clientId, "Some address", null, List.of(itemDto)
         );
 
         when(userRepository.findById(clientId)).thenReturn(Optional.of(client));

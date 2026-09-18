@@ -4,6 +4,9 @@ import com.backend.sanfely.catalog.domain.Dish;
 import com.backend.sanfely.catalog.repository.DishRepository;
 import com.backend.sanfely.common.exception.InvalidOrderTransitionException;
 import com.backend.sanfely.common.exception.ResourceNotFoundException;
+import com.backend.sanfely.common.exception.UnauthorizedActionException;
+import com.backend.sanfely.common.security.CurrentUserProvider;
+import com.backend.sanfely.common.security.OrderAccessChecker;
 import com.backend.sanfely.order.domain.Order;
 import com.backend.sanfely.order.domain.OrderItem;
 import com.backend.sanfely.order.domain.OrderStatus;
@@ -18,6 +21,7 @@ import com.backend.sanfely.order.repository.OrderRepository;
 import com.backend.sanfely.traiteur.domain.Traiteur;
 import com.backend.sanfely.traiteur.repository.TraiteurRepository;
 import com.backend.sanfely.user.domain.User;
+import com.backend.sanfely.user.domain.UserRole;
 import com.backend.sanfely.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -38,10 +42,11 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final OrderPricingService pricingService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CurrentUserProvider currentUserProvider; 
+    private final OrderAccessChecker orderAccessChecker;
     @Transactional
     public OrderResponseDto createOrder(OrderCreateRequestDto dto) {
-        User client = userRepository.findById(dto.clientId())
-            .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + dto.clientId()));
+    	User client = currentUserProvider.getCurrentUser();
 
         Traiteur traiteur = traiteurRepository.findById(dto.traiteurId())
             .orElseThrow(() -> new ResourceNotFoundException("Traiteur not found with id: " + dto.traiteurId()));
@@ -75,10 +80,21 @@ public class OrderService {
     public OrderResponseDto updateStatus(UUID orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        User currentUser = currentUserProvider.getCurrentUser();
+
+        boolean isTraiteurOwner = order.getTraiteur().getUser().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == UserRole.ADMIN;
+
+        if (!isTraiteurOwner && !isAdmin) {
+            throw new UnauthorizedActionException("You can only update your own orders");
+        }
+
         OrderStatus previousStatus = order.getStatus();
-        if (!OrderTransitionValidator.canTransition(order.getStatus(), newStatus)) {
+
+        if (!OrderTransitionValidator.canTransition(previousStatus, newStatus)) {
             throw new InvalidOrderTransitionException(
-                "Cannot transition order from " + order.getStatus() + " to " + newStatus
+                "Cannot transition order from " + previousStatus + " to " + newStatus
             );
         }
 
@@ -91,6 +107,12 @@ public class OrderService {
     public OrderResponseDto getOrderById(UUID id) {
         Order order = orderRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+
+        User currentUser = currentUserProvider.getCurrentUser();
+        if (!orderAccessChecker.canView(order, currentUser)) {
+            throw new UnauthorizedActionException("You cannot view this order");
+        }
+
         return orderMapper.toResponseDto(order);
     }
 }
