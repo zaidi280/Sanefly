@@ -3,5 +3,7 @@ package com.backend.sanfely.user.domain;
 public enum UserRole {
     ADMIN,
     TRAITEUR,
-    CLIENT
+    CLIENT,
+    LIVREUR,
+    DELIVERY_COMPANY
 }

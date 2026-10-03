@@ -22,7 +22,6 @@ import com.backend.sanfely.traiteur.domain.Traiteur;
 import com.backend.sanfely.traiteur.repository.TraiteurRepository;
 import com.backend.sanfely.user.domain.User;
 import com.backend.sanfely.user.domain.UserRole;
-import com.backend.sanfely.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -36,7 +35,6 @@ import java.util.UUID;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
     private final TraiteurRepository traiteurRepository;
     private final DishRepository dishRepository;
     private final OrderMapper orderMapper;
@@ -56,6 +54,8 @@ public class OrderService {
         order.setTraiteur(traiteur);
         order.setDeliveryAddress(dto.deliveryAddress());
         order.setRequestedDeliveryTime(dto.requestedDeliveryTime());
+        order.setDeliveryLatitude(dto.deliveryLatitude());
+        order.setDeliveryLongitude(dto.deliveryLongitude());
 
         for (OrderItemRequestDto itemDto : dto.items()) {
             Dish dish = dishRepository.findById(itemDto.dishId())
@@ -90,6 +90,18 @@ public class OrderService {
             throw new UnauthorizedActionException("You can only update your own orders");
         }
 
+        return applyStatusTransition(order, newStatus);
+    }
+
+    @Transactional
+    public OrderResponseDto updateStatusInternal(UUID orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        return applyStatusTransition(order, newStatus);
+    }
+
+    private OrderResponseDto applyStatusTransition(Order order, OrderStatus newStatus) {
         OrderStatus previousStatus = order.getStatus();
 
         if (!OrderTransitionValidator.canTransition(previousStatus, newStatus)) {

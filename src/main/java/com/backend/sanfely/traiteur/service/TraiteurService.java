@@ -1,6 +1,7 @@
 package com.backend.sanfely.traiteur.service;
 
 import com.backend.sanfely.common.exception.ResourceNotFoundException;
+import com.backend.sanfely.common.util.GeoUtils;
 import com.backend.sanfely.traiteur.domain.Traiteur;
 import com.backend.sanfely.traiteur.dto.AdminTraiteurResponseDto;
 import com.backend.sanfely.traiteur.dto.TraiteurCreateRequestDto;
@@ -13,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,6 +66,15 @@ public class TraiteurService {
         return traiteurRepository.findAll()
             .stream()
             .map(traiteurMapper::toAdminResponseDto)
+            .toList();
+    }
+    public List<TraiteurResponseDto> getNearbyTraiteurs(BigDecimal latitude, BigDecimal longitude, double radiusKm) {
+        return traiteurRepository.findByVerifiedByAdminTrueAndActiveTrue().stream()
+            .filter(t -> t.getLatitude() != null && t.getLongitude() != null)
+            .filter(t -> GeoUtils.distanceKm(latitude, longitude, t.getLatitude(), t.getLongitude()) <= radiusKm)
+            .sorted(Comparator.comparingDouble(t ->
+                GeoUtils.distanceKm(latitude, longitude, t.getLatitude(), t.getLongitude())))
+            .map(traiteurMapper::toResponseDto)
             .toList();
     }
 }

@@ -61,7 +61,7 @@ class OrderIntegrationTest extends AbstractIntegrationTest {
 
         OrderItemRequestDto itemDto = new OrderItemRequestDto(dish.getId(), 2);
         OrderCreateRequestDto dto = new OrderCreateRequestDto(
-            client.getId(), "Ariana, Tunisia", null, List.of(itemDto)
+            client.getId(), "Ariana, Tunisia", null, null, null, List.of(itemDto)
         );
 
         OrderResponseDto result = orderService.createOrder(dto);

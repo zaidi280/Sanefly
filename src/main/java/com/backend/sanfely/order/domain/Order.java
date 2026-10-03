@@ -1,6 +1,7 @@
 package com.backend.sanfely.order.domain;
 
 import com.backend.sanfely.common.audit.Auditable;
+
 import com.backend.sanfely.traiteur.domain.Traiteur;
 import com.backend.sanfely.user.domain.User;
 import jakarta.persistence.*;
@@ -49,6 +50,12 @@ public class Order extends Auditable {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
+
+    @Column(name = "delivery_latitude")
+    private BigDecimal deliveryLatitude;
+
+    @Column(name = "delivery_longitude")
+    private BigDecimal deliveryLongitude;
 
     public void addItem(OrderItem item) {
         items.add(item);

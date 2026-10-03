@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface TraiteurRepository extends JpaRepository<Traiteur, UUID> {
 	List<Traiteur> findByVerifiedByAdminTrueAndActiveTrue();
     Optional<Traiteur> findByUserId(UUID userId);
+    
 }
